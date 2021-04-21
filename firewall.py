@@ -1,9 +1,11 @@
 import socket, select, queue as Queue
 import firewall_utils as utils
+from cipher import Cipher
 
 class Firewall:
     def __init__(self, int_iterface, ext_interface, password):
         self.password = password
+        self.cipher = Cipher(password)
         self.int_interface = int_interface
         self.ext_interface = ext_interface
         self.int_socket = socket.socket(socket.PF_PACKET, socket.SOCK_RAW, socket.ntohs(0x0003))
@@ -23,8 +25,10 @@ class Firewall:
             for s in readable:
                 raw_packet = s.recv(2048)
                 if s is self.int_socket:
-                    if utils.is_admin_packet(raw_packet): 
-                        # handle new rule
+                    if self.is_admin_packet(raw_packet): 
+                        rule_payload = self.get_rule_payload(raw_packet)
+                        if rule_payload != "":
+                            # update rules
                     else:
                         packet_details = utils.get_packet_details(raw_packet)
                         if True: # firewall check on the packet
@@ -50,4 +54,15 @@ class Firewall:
                     s.send(next_msg)
             for s in exceptional:
                 # handle exception sockets
+
+    def is_admin_packet(self, packet):
+        packet_data = packet.decode('UTF-8')
+        if packet_data[:12] == 'UPDATE_RULES':
+            return True
+        else:
+            return False
+    
+    def get_rule_payload(self, packet):
+        packet_data = packet.decode('UTF-8')[12:]
+        return self.cipher.decrypt(packet_data)
 

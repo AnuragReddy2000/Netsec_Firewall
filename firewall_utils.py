@@ -16,5 +16,3 @@ def get_packet_details(packet):
         start_index = end_index
     return packet_details
 
-def is_admin_packet(packet):
-    return False
