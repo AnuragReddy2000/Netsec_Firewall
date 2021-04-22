@@ -6,6 +6,7 @@ from colorama import Fore, Style
 class Firewall:
     def __init__(self, int_iterface, ext_interface, password):
         self.password = password
+        self.rule_file = 'rules.json'
         self.cipher = Cipher(password)
         self.int_interface = int_interface
         self.ext_interface = ext_interface
@@ -19,7 +20,7 @@ class Firewall:
             self.ext_socket : Queue.Queue()
         }
         self.output_list = []
-        self.load_rules()
+        self.load_rules(self.rule_file)
         self.start_firewall()
 
     def start_firewall(self):
@@ -29,10 +30,11 @@ class Firewall:
                 raw_packet = s.recv(2048)
                 recv_time = time.time()
                 if s is self.int_socket:
-                    if self.is_admin_packet(raw_packet): 
-                        rule_payload = self.get_rule_payload(raw_packet)
-                        if rule_payload != "":
-                            # reload rules
+                    if utils.is_admin_packet(raw_packet): 
+                        rule_payload = utils.get_rule_payload(raw_packet)
+                        if rule_payload != "" and ("rule_file:" in rule_payload):
+                            self.rule_file = rule_payload[10:]
+                            self.load_rules(self.rule_file)
                     else:
                         packet_details = utils.get_packet_details(raw_packet)
                         if utils.verify_packet(packet_details, self.int_rules):
@@ -62,20 +64,9 @@ class Firewall:
                     current_interface = self.ext_interface
                 print("An exception occurred in the interface,",current_interface)
                 break
-
-    def is_admin_packet(self, packet):
-        packet_data = packet.decode('UTF-8')
-        if packet_data[:12] == 'UPDATE_RULES':
-            return True
-        else:
-            return False
     
-    def get_rule_payload(self, packet):
-        packet_data = packet.decode('UTF-8')[12:]
-        return self.cipher.decrypt(packet_data)
-
-    def load_rules(self):
-        with open('rules.json', 'r', os.O_NONBLOCK) as rules_file:
+    def load_rules(self, path_to_file):
+        with open(path_to_file, 'r', os.O_NONBLOCK) as rules_file:
             rules_data = json.load(rules_file)
             self.int_rules = rules_data['outgoing']
             self.ext_rules = rules_data['incoming']
