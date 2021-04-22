@@ -16,3 +16,5 @@ def get_packet_details(packet):
         start_index = end_index
     return packet_details
 
+def verify_packet(packet_details, rules):
+    for rule in rules:

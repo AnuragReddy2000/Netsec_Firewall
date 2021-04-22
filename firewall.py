@@ -1,6 +1,7 @@
-import socket, select, queue as Queue
+import socket, select, json, time, queue as Queue
 import firewall_utils as utils
 from cipher import Cipher
+from colorama import Fore, Style
 
 class Firewall:
     def __init__(self, int_iterface, ext_interface, password):
@@ -13,10 +14,12 @@ class Firewall:
         self.int_socket.bind((self.int_interface, 0))
         self.ext_socket.bind((self.ext_interface, 0))
         self.sockets = [self.int_socket, self.ext_socket]
-        self.output_queues = {}
-        self.output_queues[self.int_socket] = Queue.Queue()
-        self.output_queues[self.ext_socket] = Queue.Queue()
+        self.output_queues = {
+            self.int_socket : Queue.Queue(),
+            self.ext_socket : Queue.Queue()
+        }
         self.output_list = []
+        self.load_rules()
         self.start_firewall()
 
     def start_firewall(self):
@@ -24,14 +27,15 @@ class Firewall:
             readable, writable, exceptional = select.select(self.sockets, self.output_list, self.sockets)
             for s in readable:
                 raw_packet = s.recv(2048)
+                recv_time = time.time()
                 if s is self.int_socket:
                     if self.is_admin_packet(raw_packet): 
                         rule_payload = self.get_rule_payload(raw_packet)
                         if rule_payload != "":
-                            # update rules
+                            # reload rules
                     else:
                         packet_details = utils.get_packet_details(raw_packet)
-                        if True: # firewall check on the packet
+                        if utils.verify_packet(packet_details, self.int_rules):
                             self.output_queues[self.ext_socket].put(raw_packet)
                             if self.ext_socket not in self.output_list:
                                 self.output_list.append(self.ext_socket)
@@ -39,7 +43,7 @@ class Firewall:
                             # drop packet
                 else:
                     packet_details = utils.get_packet_details(raw_packet)
-                    if True: # firewall check on the packet
+                    if utils.verify_packet(packet_details, self.ext_rules):
                         self.output_queues[self.int_socket].put(raw_packet)
                         if self.int_socket not in self.output_list:
                             self.output_list.append(self.int_socket)
@@ -53,7 +57,11 @@ class Firewall:
                 else:
                     s.send(next_msg)
             for s in exceptional:
-                # handle exception sockets
+                current_interface = self.int_interface
+                if s is self.ext_socket:
+                    current_interface = self.ext_interface
+                print("An exception occurred in the interface,",current_interface)
+                break
 
     def is_admin_packet(self, packet):
         packet_data = packet.decode('UTF-8')
@@ -65,4 +73,10 @@ class Firewall:
     def get_rule_payload(self, packet):
         packet_data = packet.decode('UTF-8')[12:]
         return self.cipher.decrypt(packet_data)
+
+    def load_rules(self):
+        with open('rules.json', 'r', os.O_NONBLOCK) as rules_file:
+            rules_data = json.load(rules_file)
+            self.int_rules = rules_data['outgoing']
+            self.ext_rules = rules_data['incoming']
 
