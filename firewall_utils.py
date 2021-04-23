@@ -38,23 +38,20 @@ def get_rule_payload(cipher, packet):
 
 def verify_packet(packet_details, rules):
     for rule in rules:
-        match_count = 0
-        if rule[ETH_PROTO] == "any" or rule[ETH_PROTO] == packet_details[ETH_PROTO]:
-            match_count += 1
-        if rule[NET_PROTO] == "any" or rule[NET_PROTO] == packet_details[NET_PROTO]:
-            match_count += 1
-        if rule[TSP_PROTO] == "any" or rule[TSP_PROTO] == packet_details[TSP_PROTO]:
-            match_count += 1
-        if  rule[SRC_IP] == "any" or # chaeck for subnet masks:
-            match_count += 1
-        if  rule[DST_IP] == "any" or # chaeck for subnet masks:
-            match_count += 1
-        if  rule[SRC_PORT] == "any" or check_port(packet_details[SRC_PORT], rule[SRC_PORT]):
-            match_count += 1
-        if  rule[DST_PORT] == "any" or check_port(packet_details[DST_PORT], rule[DST_PORT]):
-            match_count += 1
-        if  rule[SRC_MAC] == "any" or rule[SRC_MAC] == packet_details[SRC_MAC]:
-            match_count += 1
+        match_count = 
+        for key in rule:
+            if rule[key] == "any" or packet_details[key] == "none":
+                match_count += 1
+            else:
+                if key == ETH_PROTO or key == NET_PROTO or key == TSP_PROTO or key == SRC_MAC:
+                    if rule[key] == packet_details[key]:
+                        match_count += 1
+                elif key == SRC_IP or key == DST_IP:
+                    if check_ip(packet_details[key], rule[key]):
+                        match_count += 1
+                elif key == SRC_PORT or key == DST_PORT:
+                    if check_port(packet_details[key], rule[key]):
+                        match_count += 1
         if match_count == 8:
             return False
     return True
@@ -62,4 +59,21 @@ def verify_packet(packet_details, rules):
 def check_port(port, port_range):
     range_values = port_range.split("-")
     return int(port) >= int(range_values[0]) and int(port) <= int(range_values[1])
+
+def check_ip(ip, rule_ip):
+    if "/" in rule_ip:
+        [subnet_ip, mask] = rule_ip.split("/")
+        mask = int(mask)
+        bin_subnet = get_ip_binary(subnet_ip)
+        bin_ip = get_ip_binary(ip)
+        return bin_ip[:mask] == bin_subnet[:mask]
+    else:
+        return ip == rule_ip
+
+def get_ip_binary(ip):
+    ip_components = ip.split(".")
+    bin_ip = ""
+    for component in ip_components:
+        bin_ip = bin_ip + '{0:08b}'.format(component)
+    return bin_ip
 
