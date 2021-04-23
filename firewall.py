@@ -4,9 +4,9 @@ from cipher import Cipher
 from colorama import Fore, Style
 
 class Firewall:
-    def __init__(self, int_iterface, ext_interface, password):
+    def __init__(self, int_iterface, ext_interface, rule_file, password):
         self.password = password
-        self.rule_file = 'rules.json'
+        self.rule_file = rule_file
         self.cipher = Cipher(password)
         self.int_interface = int_interface
         self.ext_interface = ext_interface
@@ -20,7 +20,7 @@ class Firewall:
             self.ext_socket : Queue.Queue()
         }
         self.output_list = []
-        self.load_rules(self.rule_file)
+        self.int_rules, self.ext_rules = utils.load_rules(self.rule_file)
         self.start_firewall()
 
     def start_firewall(self):
@@ -65,9 +65,4 @@ class Firewall:
                 print("An exception occurred in the interface,",current_interface)
                 break
     
-    def load_rules(self, path_to_file):
-        with open(path_to_file, 'r', os.O_NONBLOCK) as rules_file:
-            rules_data = json.load(rules_file)
-            self.int_rules = rules_data['outgoing']
-            self.ext_rules = rules_data['incoming']
 

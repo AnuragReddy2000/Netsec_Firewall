@@ -18,14 +18,13 @@ def get_packet_details(packet):
         end_index: int = start_index + protocol_class.header_len
         current_protocol = protocol_class(packet[start_index:end_index])
         packet_details = current_protocol.fill_details(packet_details)
-        setattr(self, protocol.lower(), current_protocol)
         if current_protocol.encapsulated_proto is None:
             break
         protocol_queue.append(current_protocol.encapsulated_proto)
         start_index = end_index
     return packet_details
 
-def is_admin_packet(self, packet):
+def is_admin_packet(packet):
     packet_data = packet.decode('UTF-8')
     if packet_data[:12] == 'UPDATE_RULES':
         return True
@@ -38,19 +37,19 @@ def get_rule_payload(cipher, packet):
 
 def verify_packet(packet_details, rules):
     for rule in rules:
-        match_count = 
+        match_count = 0
         for key in rule:
-            if rule[key] == "any" or packet_details[key] == "none":
+            if rule[key] == "any":
                 match_count += 1
             else:
                 if key == ETH_PROTO or key == NET_PROTO or key == TSP_PROTO or key == SRC_MAC:
-                    if rule[key] == packet_details[key]:
+                    if packet_details[key] != "none" and rule[key] == packet_details[key]:
                         match_count += 1
                 elif key == SRC_IP or key == DST_IP:
-                    if check_ip(packet_details[key], rule[key]):
+                    if packet_details[key] != "none" and check_ip(packet_details[key], rule[key]):
                         match_count += 1
                 elif key == SRC_PORT or key == DST_PORT:
-                    if check_port(packet_details[key], rule[key]):
+                    if packet_details[key] != "none" and check_port(packet_details[key], rule[key]):
                         match_count += 1
         if match_count == 8:
             return False
@@ -76,4 +75,11 @@ def get_ip_binary(ip):
     for component in ip_components:
         bin_ip = bin_ip + '{0:08b}'.format(component)
     return bin_ip
+
+def load_rules(self, path_to_file):
+    with open(path_to_file, 'r', os.O_NONBLOCK) as rules_file:
+        rules_data = json.load(rules_file)
+        rules_file.close()
+        return rules_data['incoming'], rules_data['outgoing']
+        
 
