@@ -1,17 +1,20 @@
-import firewall_utils as utils
+import firewall_utils as utils, json
 
 class Rules:
     def __init__(self, file_path):
-        self.rule_file = file_path
+        self.file_path = file_path
         self.int_rules, self.ext_rules = utils.load_rules(file_path)
         self.eth_filters = ["ETH", "ARP", "any"]
         self.net_filters = ["IPv4", "IPv6", "ICMP", "any"]
         self.tsp_filters = ["TCP", "UDP", "any"]
 
     def commit_changes(self):
-        # yet to implement
+        with open(self.file_path, 'w', os.O_NONBLOCK) as rule_file:
+            json.dump({"incoming": self.ext_rules, "outgoing": self.int_rules}, rule_file)
+            print("Sucessfully committed changes to the rule file, ",self.file_path)
+            rule_file.close()
 
-    def add(self):
+    def input_rule(self):
         rule_eth = input("Enter Link Layer protocol filter for the rule [ETH/ARP/any]: ")
         while rule_eth not in self.eth_filters:
             rule_eth = input("Invalid Link Layer protocol filter! Please try again [ETH/ARP/any]:")
@@ -34,9 +37,6 @@ class Rules:
         while self.check_port(rule_dst_port):
             rule_dst_port = input("Invalid port (or port range)! Please try again:")
         rule_src_mac = input("Enter source MAC filter: ")
-        rule_set = input("Add the rule to incoming rules or outgoing rules? [i/e]: ")
-        while rule_set != "i" and rule_set != "e":
-            rule_set = input("Invalid response! Please try again: ")
         new_rule = {
             utils.ETH_PROTO : rule_eth,
             utils.NET_PROTO : rule_net,
@@ -47,12 +47,43 @@ class Rules:
             utils.DST_PORT : rule_dst_port,
             utils.SRC_MAC : rule_src_mac
         }
+        return new_rule
+
+    def add(self):
+        new_rule = self.input_rule()
+        rule_set = input("Add the rule to incoming rules or outgoing rules? [i/e]: ")
+        while rule_set != "i" and rule_set != "e":
+            rule_set = input("Invalid response! Please try again: ")
         if rule_set == "e":
             new_rule["index"] = len(self.ext_rules) + 1
             self.ext_rules.append(new_rule)
         else:
             new_rule["index"] = len(self.int_rules) + 1
             self.int_rules.append(new_rule)
+        self.commit_changes()
+
+    def edit_rule(self, rule_set, index):
+        if rule_set == "e":
+            rules = self.ext_rules
+        else:
+            rules = self.int_rules
+        if index > len(rules):
+            print("Invalid index! Please try again!")
+        else:
+            self.print_rule(rules[index-1])
+            print("")
+            new_rule = self.input_rule()
+            print("")
+            confirmation = input("Confirm update to the above rule? [Y/N]: ")
+            if confirmation == "Y":
+                rules[index-1] = new_rule
+                if rule_set == "e":
+                    self.ext_rules = rules
+                else:
+                    self.int_rules = rules
+                self.commit_changes()
+            else:
+                print("Updation cancelled!")
 
     def check_ip(self, ip):
         if "/" in ip:
@@ -144,6 +175,7 @@ class Rules:
                     self.ext_rules = rules
                 else:
                     self.int_rules = rules
+                self.commit_changes()
             else:
                 print("Deletion cancelled!")
 
