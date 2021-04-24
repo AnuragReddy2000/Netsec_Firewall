@@ -1,4 +1,4 @@
-import firewall_utils as utils, json
+import firewall_utils as utils, json, os
 
 class Rules:
     def __init__(self, file_path):
@@ -17,24 +17,24 @@ class Rules:
     def input_rule(self):
         rule_eth = input("Enter Link Layer protocol filter for the rule [ETH/ARP/any]: ")
         while rule_eth not in self.eth_filters:
-            rule_eth = input("Invalid Link Layer protocol filter! Please try again [ETH/ARP/any]:")
+            rule_eth = input("Invalid Link Layer protocol filter! Please try again [ETH/ARP/any]: ")
         rule_net = input("Enter Network Layer protocol filter for the rule [IPv4/IPv6/ICMP/any]: ")
         while rule_net not in self.net_filters:
-            rule_net = input("Invalid Network Layer filter! Please try again [IPv4/IPv6/ICMP/any]:")
+            rule_net = input("Invalid Network Layer filter! Please try again [IPv4/IPv6/ICMP/any]: ")
         rule_tsp = input("Enter Transport Layer protocol filter for the rule [TCP/UDP/any]: ")
         while rule_tsp not in self.tsp_filters:
-            rule_tsp = input("Invalid Transport Layer protocol filter! Please try again [TCP/UDP/any]:")
-        rule_src_ip = input("Enter source ip address (or subnet mask) filter: [eg. 10.0.0.1 or 10.0.0.1/24]")
-        while self.check_ip(rule_src_ip):
+            rule_tsp = input("Invalid Transport Layer protocol filter! Please try again [TCP/UDP/any]: ")
+        rule_src_ip = input("Enter source ip address (or subnet mask) filter: [eg. 10.0.0.1 or 10.0.0.1/24] ")
+        while not self.check_ip(rule_src_ip):
             rule_src_ip = input("Invalid ip address (or subnet mask)! Please try again: ")
-        rule_dst_ip = input("Enter destination ip address (or subnet mask) filter: [eg. 10.0.0.1 or 10.0.0.1/24]")
-        while self.check_ip(rule_dst_ip):
+        rule_dst_ip = input("Enter destination ip address (or subnet mask) filter: [eg. 10.0.0.1 or 10.0.0.1/24] ")
+        while not self.check_ip(rule_dst_ip):
             rule_dst_ip = input("Invalid ip address (or subnet mask)! Please try again: ")
         rule_src_port = input("Enter source port (or port range) filter: [eg. 50 or 45-53] ")
-        while self.check_port(rule_src_port):
+        while not self.check_port(rule_src_port):
             rule_src_port = input("Invalid port (or port range)! Please try again:")
         rule_dst_port = input("Enter destination port (or port range) filter: [eg. 50 or 45-53] ")
-        while self.check_port(rule_dst_port):
+        while not self.check_port(rule_dst_port):
             rule_dst_port = input("Invalid port (or port range)! Please try again:")
         rule_src_mac = input("Enter source MAC filter: ")
         new_rule = {
@@ -51,14 +51,12 @@ class Rules:
 
     def add(self):
         new_rule = self.input_rule()
-        rule_set = input("Add the rule to incoming rules or outgoing rules? [i/e]: ")
-        while rule_set != "i" and rule_set != "e":
+        rule_set = input("Add the rule to incoming rules or outgoing rules? [i/o]: ")
+        while rule_set != "i" and rule_set != "o":
             rule_set = input("Invalid response! Please try again: ")
-        if rule_set == "e":
-            new_rule["index"] = len(self.ext_rules) + 1
+        if rule_set == "i":
             self.ext_rules.append(new_rule)
         else:
-            new_rule["index"] = len(self.int_rules) + 1
             self.int_rules.append(new_rule)
         self.commit_changes()
 
@@ -70,8 +68,12 @@ class Rules:
         if index > len(rules):
             print("Invalid index! Please try again!")
         else:
-            self.print_rule(rules[index-1])
+            print("Displaying the rule to be edited:")
+            print("-"*70)
+            self.print_rule(rules[index-1], index-1)
+            print("-"*70)
             print("")
+            print("Now provide alternate filters for the above rule:")
             new_rule = self.input_rule()
             print("")
             confirmation = input("Confirm update to the above rule? [Y/N]: ")
@@ -107,32 +109,32 @@ class Rules:
             return port.isnumeric()
         return True
 
-    def print_rule(self, rule):
-        print("INDEX: ",rule["index"]+1)
+    def print_rule(self, rule, index):
+        print("RULE INDEX: ",index+1)
         print("LINK LAYER: ", rule[utils.ETH_PROTO], ", NETWORK LAYER: ", rule[utils.NET_PROTO], ", TRANSPORT LAYER: ", rule[utils.TSP_PROTO],", SRC MAC: ",rule[utils.SRC_MAC])
-        print("SRC IP: "rule[utils.SRC_IP],", DST IP: ",rule[utils.DST_IP], ", SRC PORT: ",rule[utils.SRC_PORT], ", DST PORT: ",rule[utils.DST_PORT])
+        print("SRC IP: ",rule[utils.SRC_IP],", DST IP: ",rule[utils.DST_IP], ", SRC PORT: ",rule[utils.SRC_PORT], ", DST PORT: ",rule[utils.DST_PORT])
 
     def show_rules(self, rule_set=None, index=None):
         if rule_set == None:
-            print("-"*10,"INCOMING PACKETS (EXTERNAL NETWORK) RULES","-"*10)
-            print("="*50)
-            for rule in self.ext_rules:
-                self.print_rule(rule)
-                print("-"*50)
+            print("-"*10,"RULES FOR PACKETS COMING FROM EXTERNAL NETWORK","-"*10)
+            print("="*70)
+            for idx, rule in enumerate(self.ext_rules):
+                self.print_rule(rule, idx)
+                print("-"*70)
             print("")
-            print("-"*10,"OUTGOING PACKETS (INTERNAL NETWORK) RULES","-"*10)
-            print("="*50)
-            for rule in self.int_rules:
-                self.print_rule(rule)
-                print("-"*50)
-            print("="*50)
+            print("-"*10,"RULES FOR PACKETS GOING FROM INTERNAL NETWORK","-"*10)
+            print("="*70)
+            for idx, rule in enumerate(self.int_rules):
+                self.print_rule(rule, idx)
+                print("-"*70)
+            print("="*70)
         else:
             if rule_set == 'e':
                 if index == None:
-                    print("-"*10,"INCOMING PACKETS (EXTERNAL NETWORK) RULES","-"*10)
+                    print("-"*10,"RULES FOR PACKETS COMING FROM EXTERNAL NETWORK","-"*10)
                     print("="*50)
-                    for rule in self.ext_rules:
-                        self.print_rule(rule)
+                    for idx, rule in enumerate(self.ext_rules):
+                        self.print_rule(rule, idx)
                         print("-"*50)
                 else:
                     if index > len(self.ext_rules):
@@ -140,14 +142,14 @@ class Rules:
                     else:
                         print("-"*10,"INCOMING PACKETS (EXTERNAL NETWORK) RULE INDEX: ",index,"-"*10)
                         print("="*50)
-                        self.print_rule(self.ext_rules[index])
+                        self.print_rule(self.ext_rules[index-1], index-1)
                         print("="*50)
             else:
                 if index == None:
-                    print("-"*10,"OUTGOING PACKETS (INTERNAL NETWORK) RULES","-"*10)
+                    print("-"*10,"RULES FOR PACKETS GOING FROM INTERNAL NETWORK","-"*10)
                     print("="*50)
-                    for rule in self.int_rules:
-                        self.print_rule(rule)
+                    for idx, rule in enumerate(self.int_rules):
+                        self.print_rule(rule, idx)
                         print("-"*50)
                 else:
                     if index > len(self.int_rules):
@@ -155,7 +157,7 @@ class Rules:
                     else:
                         print("-"*10,"OUTGOING PACKETS (INTERNAL NETWORK) RULE INDEX: ",index,"-"*10)
                         print("="*50)
-                        self.print_rule(self.int_rules[index-1])
+                        self.print_rule(self.int_rules[index-1], index-1)
                         print("="*50)
 
     def delete_rule(self, rule_set, index):
@@ -166,10 +168,10 @@ class Rules:
         if index > len(rules):
             print("Invalid index! Please try again!")
         else:
-            self.print_rule(rules[index-1])
+            self.print_rule(rules[index-1], index-1)
             print("")
             confirmation = input("Confirm delete the above rule? [Y/N]: ")
-            if confirmation == Y:
+            if confirmation == "Y":
                 rules.remove(rules[index-1])
                 if rule_set == "e":
                     self.ext_rules = rules

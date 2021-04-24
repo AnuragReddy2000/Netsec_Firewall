@@ -1,4 +1,4 @@
-import socket, select, json, time, queue as Queue
+import socket, select, json, time, os, queue as Queue
 import firewall_utils as utils
 from cipher import Cipher
 from colorama import Fore, Style
