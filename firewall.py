@@ -2,6 +2,7 @@ import socket, select, json, time, os, queue as Queue
 import firewall_utils as utils
 from cipher import Cipher
 from colorama import Fore, Style
+from getpass import getpass
 
 class Firewall:
     def __init__(self, int_iterface, ext_interface, rule_file, password):
@@ -35,7 +36,7 @@ class Firewall:
             print("")
             abort_conf = input("Keyboard interrupt! Abort firewall? [Y/N]: ")
             if abort_conf == "Y":
-                abort_pswd = input("Please enter the firewall authentication password: ")
+                abort_pswd = getpass(prompt="Please enter the firewall authentication password: ")
                 if abort_pswd == self.password:
                     print("Password match! Aborting!")
                 else:

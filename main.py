@@ -35,7 +35,7 @@ def main():
                     if sys.argv[4] == "-add":
                         io.add()
                     elif sys.argv[4] == "-apply":
-                        password = input("Please enter the firewall authentication password: ")
+                        password = getpass(prompt="Please enter the firewall authentication password: ")
                         apply_rules(file_path, password)
                     elif sys.argv[4] == "-update":
                         if arg_len != 8:
