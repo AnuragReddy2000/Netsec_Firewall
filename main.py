@@ -1,8 +1,10 @@
+#!/usr/bin/env python3
+
 from rules_io import Rules
 from firewall import Firewall
 from getpass import getpass
 from cipher import Cipher
-import socket, os
+import socket, os, sys, json
 
 def main():
     arg_len = len(sys.argv)
@@ -68,7 +70,7 @@ def main():
                         if arg_len == 8:
                             rule_set = sys.argv[5]
                             rule_index = sys.argv[7]
-                             
+                       
         else:
             print_usage()
 
@@ -104,7 +106,7 @@ def create_new(file_path):
 def apply_rules(file_path, password):
     try:
         lp_socket = socket.socket(socket.PF_PACKET, socket.SOCK_RAW, socket.ntohs(0x0003))
-        lp_socket.connect(("127.0.0.1",3000))
+        lp_socket.connect(("127.0.0.1",5430))
         encrypted_msg = Cipher(password).encrypt("RULE_FILE:"+file_path)
         final_msg = "UPDATE_RULES"+encrypted_msg
         lp_socket.sendall(final_msg.encode('UTf-8'))
@@ -113,6 +115,6 @@ def apply_rules(file_path, password):
         lp_socket.close()
 
 def show_statistics(file_path):
-    # to be implemented
-
+    pass
+ 
 main()

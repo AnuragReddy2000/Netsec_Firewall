@@ -5,7 +5,7 @@ from colorama import Fore, Style
 from getpass import getpass
 
 class Firewall:
-    def __init__(self, int_iterface, ext_interface, rule_file, password):
+    def __init__(self, int_interface, ext_interface, rule_file, password):
         self.password = password
         self.rule_file = rule_file
         self.cipher = Cipher(password)
@@ -20,7 +20,7 @@ class Firewall:
             self.lp_socket.setblocking(0)
             self.int_socket.bind((self.int_interface, 0))
             self.ext_socket.bind((self.ext_interface, 0))
-            self.lp_socket.bind(('127.0.0.1',3000))
+            self.lp_socket.bind(('lo',5430))
             self.sockets = [self.int_socket, self.ext_socket, self.lp_socket]
             self.output_queues = {
                 self.int_socket : Queue.Queue(),
@@ -69,7 +69,8 @@ class Firewall:
                         if self.ext_socket not in self.output_list:
                             self.output_list.append(self.ext_socket)
                     else: 
-                        # drop packet
+                        print("Packet dropped.")
+                        print(packet_details)
                 else:
                     packet_details = utils.get_packet_details(raw_packet)
                     if utils.verify_packet(packet_details, self.ext_rules):
@@ -77,10 +78,11 @@ class Firewall:
                         if self.int_socket not in self.output_list:
                             self.output_list.append(self.int_socket)
                     else: 
-                        # drop packet
+                        print("Packet dropped.")
+                        print(packet_details)
             for s in writable:
                 try:
-                    next_msg = self.message_queues[s].get_nowait()
+                    next_msg = self.output_queues[s].get_nowait()
                 except Queue.Empty:
                     self.output_list.remove(s)
                 else:
