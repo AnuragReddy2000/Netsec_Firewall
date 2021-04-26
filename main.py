@@ -1,7 +1,8 @@
 from rules_io import Rules
 from firewall import Firewall
 from getpass import getpass
-import os
+from cipher import Cipher
+import socket, os
 
 def main():
     arg_len = len(sys.argv)
@@ -34,7 +35,8 @@ def main():
                     if sys.argv[4] == "-add":
                         io.add()
                     elif sys.argv[4] == "-apply":
-                        apply_rules(file_path)
+                        password = input("Please enter the firewall authentication password: ")
+                        apply_rules(file_path, password)
                     elif sys.argv[4] == "-update":
                         if arg_len != 8:
                             print_usage()
@@ -99,8 +101,16 @@ def create_new(file_path):
         rule_file.close()
     print("Sucessfully created an empty rule file")
 
-def apply_rules(file_path):
-    # to be implemented
+def apply_rules(file_path, password):
+    try:
+        lp_socket = socket.socket(socket.PF_PACKET, socket.SOCK_RAW, socket.ntohs(0x0003))
+        lp_socket.connect(("127.0.0.1",3000))
+        encrypted_msg = Cipher(password).encrypt("RULE_FILE:"+file_path)
+        final_msg = "UPDATE_RULES"+encrypted_msg
+        lp_socket.sendall(final_msg.encode('UTf-8'))
+        lp_socket.close()
+    except:
+        lp_socket.close()
 
 def show_statistics(file_path):
     # to be implemented
