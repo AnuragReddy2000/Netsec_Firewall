@@ -1,4 +1,5 @@
 import protocols, os, json
+from ipaddress import IPv6Address
 
 ETH_PROTO = "eth_proto"
 NET_PROTO = "net_proto"
@@ -75,6 +76,14 @@ def check_port(port, port_range):
         return port == port_range
 
 def check_ip(ip, rule_ip):
+    if "." in ip and "." in rule_ip:
+        return check_ipv4(ip, rule_ip)
+    elif ":" in ip and ":" in rule_ip:
+        return check_ipv6(ip, rule_ip)
+    else:
+        return False
+
+def check_ipv4(ip, rule_ip):
     if "/" in rule_ip:
         [subnet_ip, mask] = rule_ip.split("/")
         mask = int(mask)
@@ -84,12 +93,16 @@ def check_ip(ip, rule_ip):
     else:
         return ip == rule_ip
 
+def check_ipv6(ip, rule_ip):
+    return IPv6Adress(ip) in IPv6Network(rule_ip, False)
+
 def get_ip_binary(ip):
     ip_components = ip.split(".")
     bin_ip = ""
     for component in ip_components:
         bin_ip = bin_ip + '{0:08b}'.format(int(component))
     return bin_ip
+
 
 def load_rules( path_to_file):
     with open(path_to_file, 'r', os.O_NONBLOCK) as rules_file:

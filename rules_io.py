@@ -1,4 +1,4 @@
-import firewall_utils as utils, json, os
+import firewall_utils as utils, json, os, re
 
 class Rules:
     def __init__(self, file_path):
@@ -40,8 +40,10 @@ class Rules:
             rule_src_port = input("Invalid port (or port range)! Please try again:")
         rule_dst_port = input("Enter destination port (or port range) filter [eg. 50 or 45-53 or any]: ")
         while not (rule_dst_port == "any" or self.check_port(rule_dst_port)):
-            rule_dst_port = input("Invalid port (or port range)! Please try again:")
+            rule_dst_port = input("Invalid port (or port range)! Please try again: ")
         rule_src_mac = input("Enter source MAC filter: ")
+        while not (rule_src_mac == "any" or self.check_mac(rule_src_mac)):
+            rule_src_mac = input("Invalid MAC address! Please try again: ")
         new_rule = {
             utils.ETH_PROTO : rule_eth,
             utils.NET_PROTO : rule_net,
@@ -107,7 +109,20 @@ class Rules:
             else:
                 print("Updation cancelled!")
 
+    def check_mac(self, mac):
+
+        regex = ("^([0-9A-Fa-f]{2}[:-])" + "{5}([0-9A-Fa-f]{2})|" +
+                "([0-9a-fA-F]{4}\\." + "[0-9a-fA-F]{4}\\." +
+                "[0-9a-fA-F]{4})$")  
+        p = re.compile(regex)
+        if re.search(p, mac):
+            return True
+        else:
+            return False
+
+
     def check_ip(self, ip):
+        '''
         if "/" in ip:
             [ip, mask] = ip.split("/")
             if not mask.isnumeric() or int(mask) > 32:
@@ -119,6 +134,12 @@ class Rules:
             if not component.isnumeric() or int(component) > 255:
                 return False 
         return True
+        '''
+        try:
+            ipaddress.ip_network(ip)
+            return True
+        except ValueError:
+            return False
     
     def check_port(self, port):
         if "-" in port:

@@ -213,5 +213,5 @@ class ICMP(Protocol):           # IETF RFC 792
         self.type_txt = self.icmp_types.get(self.type, 'OTHER')
 
     def fill_details(self, details):
-        details[utils.IP_PROTO] = "ICMP"
+        details[utils.NET_PROTO] = "ICMP"
         return details
