@@ -99,7 +99,12 @@ usage:  run -i [internal network interface] -e [external network interface] -f [
 def create_new(file_path):
     print("")
     with open(file_path, 'w', os.O_NONBLOCK) as rule_file:
-        json.dump({"incoming": [], "outgoing": []}, rule_file)
+        json.dump({
+            "incoming": [], 
+            "outgoing": [],
+            "incoming_last_index": 0,
+            "outgoing_last_index": 0,
+        }, rule_file)
         rule_file.close()
     print("Sucessfully created an empty rule file")
 

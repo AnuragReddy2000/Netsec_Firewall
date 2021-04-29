@@ -27,7 +27,7 @@ class Firewall:
                 self.ext_socket : Queue.Queue()
             }
             self.output_list = []
-            self.int_rules, self.ext_rules = utils.load_rules(self.rule_file)
+            self.int_rules, self.ext_rules, _, _ = utils.load_rules(self.rule_file)
             self.start_firewall()
         except KeyboardInterrupt:
             self.int_socket.close()

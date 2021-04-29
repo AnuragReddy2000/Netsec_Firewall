@@ -95,6 +95,6 @@ def load_rules( path_to_file):
     with open(path_to_file, 'r', os.O_NONBLOCK) as rules_file:
         rules_data = json.load(rules_file)
         rules_file.close()
-        return rules_data['outgoing'], rules_data['incoming']
+        return rules_data['outgoing'], rules_data['incoming'], rules_data['outgoing_last_index'], rules_data['incoming_last_index']
         
 

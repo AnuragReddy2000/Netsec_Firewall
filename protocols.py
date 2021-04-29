@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 from ctypes import BigEndianStructure, create_string_buffer, c_ubyte, c_uint8, \
     c_uint16, c_uint32, sizeof
 from socket import inet_ntop, AF_INET, AF_INET6
