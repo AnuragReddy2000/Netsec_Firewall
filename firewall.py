@@ -1,4 +1,4 @@
-import socket, select, json, time, os, queue as Queue
+import socket, select, json, time, os, random, bisect, queue as Queue
 import firewall_utils as utils
 from cipher import Cipher
 #from colorama import Fore, Style
@@ -14,7 +14,10 @@ class Firewall:
         self.int_socket = socket.socket(socket.PF_PACKET, socket.SOCK_RAW, socket.ntohs(0x0003))
         self.ext_socket = socket.socket(socket.PF_PACKET, socket.SOCK_RAW, socket.ntohs(0x0003))
         self.lp_socket = socket.socket(socket.PF_PACKET, socket.SOCK_RAW, socket.ntohs(0x0003))
-        
+        self.icmp_list = []
+        self.icmp_tolerance = 100
+        self.icmp_block = False
+        self.icmp_block_start = 0
         try:
             self.int_socket.setblocking(0)
             self.ext_socket.setblocking(0)
@@ -30,7 +33,6 @@ class Firewall:
             self.output_list = []
             self.int_rules, self.ext_rules, _, _ = utils.load_rules(self.rule_file)       
             self.start_firewall()
-
         except Exception as e:
             self.int_socket.close()
             self.ext_socket.close()
@@ -64,9 +66,12 @@ class Firewall:
                     else:
                         packet_details = utils.get_packet_details(raw_packet)
                         if utils.verify_packet(packet_details, self.ext_rules):
-                            self.output_queues[self.int_socket].put(raw_packet)
-                            if self.int_socket not in self.output_list:
-                                self.output_list.append(self.int_socket)
+                            if packet_details[utils.NET_PROTO] == "ICMP":
+                                self.handle_ICMP(raw_packet, recv_time)
+                            else:
+                                self.output_queues[self.int_socket].put(raw_packet)
+                                if self.int_socket not in self.output_list:
+                                    self.output_list.append(self.int_socket)
                         else: 
                             print("Packet dropped.")
                             print(packet_details)
@@ -100,6 +105,29 @@ class Firewall:
                 else:
                     pass
 
-    
+    def handle_ICMP(self, packet, time_stamp):
+        if not self.icmp_block:
+            self.icmp_list.append(time_stamp)
+            indx = bisect.bisect_left(self.icmp_list, time_stamp-120)
+            self.icmp_list = self.icmp_list[indx:]
+            last_count = len(self.icmp_list)
+            if last_count < self.icmp_tolerance:
+                self.output_queues[self.int_socket].put(packet)
+                if self.int_socket not in self.output_list:
+                    self.output_list.append(self.int_socket)
+            else:
+                self.icmp_block = True
+                self.icmp_block_start = time.time()
+                # dropped icmp 
+        else:
+            if time_stamp - self.icmp_block_start < 3600:
+                # dropped icmp
+            else:
+                self.icmp_block = False
+                self.icmp_block_start = 0
+
+
+
+
     
 

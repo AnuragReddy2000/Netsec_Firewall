@@ -1,9 +1,7 @@
-from ctypes import BigEndianStructure, create_string_buffer, c_ubyte, c_uint8, \
-    c_uint16, c_uint32, sizeof
-from socket import inet_ntop, AF_INET, AF_INET6
-import firewall_utils as utils
+from ctypes import BigEndianStructure, create_string_buffer, c_ubyte, c_uint8, c_uint16, c_uint32, sizeof
+import firewall_utils as utils, socket
 
-class Protocol(BigEndianStructure):
+class BaseProtocol(BigEndianStructure):
     _pack_ = 1
 
     def __new__(cls, packet):
@@ -18,27 +16,18 @@ class Protocol(BigEndianStructure):
 
     @staticmethod
     def addr_array_to_hdwr(address: str) -> str:
-        """
-        Converts a c_ubyte array of 6 bytes to IEEE 802 MAC address.
-        Ex: From b'\xceP\x9a\xcc\x8c\x9d' to 'ce:50:9a:cc:8c:9d'
-        """
         return ':'.join(format(octet, '02x') for octet in bytes(address))
 
     @staticmethod
     def hex_format(value: int, str_length: int) -> str:
-        """
-        Fills a hex value with zeroes to the left for compliance with
-        the presentation of codes used in Internet protocols.
-        Ex: From '0x800' to '0x0800'
-        """
         return format(value, '#0{}x'.format(str_length))
 
 
-class Ethernet(Protocol):      # IEEE 802.3 standard
+class Ethernet(BaseProtocol):
     _fields_ = [
-        ('dst', c_ubyte * 6),  # Destination hardware address
-        ('src', c_ubyte * 6),  # Source hardware address
-        ('eth', c_uint16)      # Ethertype
+        ('dst', c_ubyte * 6),  
+        ('src', c_ubyte * 6),  
+        ('eth', c_uint16)      
     ]
     header_len = 14
     ethertypes = {'0x0806': 'ARP', '0x0800': 'IPv4', '0x86dd': 'IPv6'}
@@ -48,7 +37,6 @@ class Ethernet(Protocol):      # IEEE 802.3 standard
         self.dest = self.addr_array_to_hdwr(self.dst)
         self.source = self.addr_array_to_hdwr(self.src)
         self.ethertype = self.hex_format(self.eth, 6)
-        # Limit implementation to common protocols
         self.encapsulated_proto = self.ethertypes.get(self.ethertype, None)
 
     def fill_details(self, details):
@@ -57,30 +45,29 @@ class Ethernet(Protocol):      # IEEE 802.3 standard
         return details
 
 
-class IPv4(Protocol):              # IETF RFC 791
+class IPv4(BaseProtocol):              
     _fields_ = [
-        ("version", c_uint8, 4),   # Protocol version
-        ("ihl", c_uint8, 4),       # Internet header length
-        ("dscp", c_uint8, 6),      # Differentiated services code point
-        ("ecp", c_uint8, 2),       # Explicit congestion notification
-        ("len", c_uint16),         # Total packet length
-        ("id", c_uint16),          # Identification
-        ("flags", c_uint16, 3),    # Fragmentation control flags
-        ("offset", c_uint16, 13),  # Fragment offset
-        ("ttl", c_uint8),          # Time to live
-        ("proto", c_uint8),        # Encapsulated protocol
-        ("chksum", c_uint16),      # Header checksum
-        ("src", c_ubyte * 4),      # Source address
-        ("dst", c_ubyte * 4)       # Destination address
+        ("version", c_uint8, 4),   
+        ("ihl", c_uint8, 4),     
+        ("dscp", c_uint8, 6),     
+        ("ecp", c_uint8, 2),   
+        ("len", c_uint16),       
+        ("id", c_uint16),       
+        ("flags", c_uint16, 3),   
+        ("offset", c_uint16, 13),  
+        ("ttl", c_uint8),         
+        ("proto", c_uint8),       
+        ("chksum", c_uint16),   
+        ("src", c_ubyte * 4),  
+        ("dst", c_ubyte * 4)       
     ]
     header_len = 20
     proto_numbers = {1: 'ICMP', 6: 'TCP', 17: 'UDP'}
 
     def __init__(self, packet: bytes):
         super().__init__(packet)
-        self.source = inet_ntop(AF_INET, self.src)
-        self.dest = inet_ntop(AF_INET, self.dst)
-        # Limit implementation to common protocols
+        self.source = socket.inet_ntop(socket.AF_INET, self.src)
+        self.dest = socket.inet_ntop(socket.AF_INET, self.dst)
         self.encapsulated_proto = self.proto_numbers.get(self.proto, None)
 
     def fill_details(self, details):
@@ -90,23 +77,23 @@ class IPv4(Protocol):              # IETF RFC 791
         return details
 
 
-class IPv6(Protocol):               # IETF RFC 2460 / 8200
+class IPv6(BaseProtocol):               
     _fields_ = [
-        ("version", c_uint32, 4),   # Protocol version
-        ("tclass", c_uint32, 8),    # Traffic class
-        ("flabel", c_uint32, 20),   # Flow label
-        ("payload_len", c_uint16),  # Payload length
-        ("next_header", c_uint8),   # Type of next header
-        ("hop_limit", c_uint8),     # Hop limit (replaces IPv4 TTL)
-        ("src", c_ubyte * 16),      # Source address
-        ("dst", c_ubyte * 16)       # Destination address
+        ("version", c_uint32, 4),  
+        ("tclass", c_uint32, 8),   
+        ("flabel", c_uint32, 20), 
+        ("payload_len", c_uint16),
+        ("next_header", c_uint8), 
+        ("hop_limit", c_uint8),   
+        ("src", c_ubyte * 16),    
+        ("dst", c_ubyte * 16)     
     ]
     header_len = 40
 
     def __init__(self, packet: bytes):
         super().__init__(packet)
-        self.source = inet_ntop(AF_INET6, self.src)
-        self.dest = inet_ntop(AF_INET6, self.dst)
+        self.source = socket.inet_ntop(socket.AF_INET6, self.src)
+        self.dest = socket.inet_ntop(socket.AF_INET6, self.dst)
 
     def fill_details(self, details):
         details[utils.NET_PROTO] = "IPv6"
@@ -115,17 +102,17 @@ class IPv6(Protocol):               # IETF RFC 2460 / 8200
         return details
 
 
-class ARP(Protocol):           # IETF RFC 826
+class ARP(BaseProtocol):          
     _fields_ = [
-        ("htype", c_uint16),   # Hardware type
-        ("ptype", c_uint16),   # Protocol type
-        ("hlen", c_uint8),     # Hardware length
-        ("plen", c_uint8),     # Protocol length
-        ("oper", c_uint16),    # Operation
-        ("sha", c_ubyte * 6),  # Sender hardware address
-        ("spa", c_ubyte * 4),  # Sender protocol address
-        ("tha", c_ubyte * 6),  # Target hardware address
-        ("tpa", c_ubyte * 4),  # Target protocol address
+        ("htype", c_uint16),  
+        ("ptype", c_uint16),  
+        ("hlen", c_uint8),    
+        ("plen", c_uint8),   
+        ("oper", c_uint16),  
+        ("sha", c_ubyte * 6), 
+        ("spa", c_ubyte * 4), 
+        ("tha", c_ubyte * 6),  
+        ("tpa", c_ubyte * 4), 
     ]
     header_len = 28
 
@@ -134,8 +121,8 @@ class ARP(Protocol):           # IETF RFC 826
         self.protocol = self.hex_format(self.ptype, 6)
         self.source_hdwr = self.addr_array_to_hdwr(self.sha)
         self.target_hdwr = self.addr_array_to_hdwr(self.tha)
-        self.source_proto = inet_ntop(AF_INET, bytes(self.spa))
-        self.target_proto = inet_ntop(AF_INET, bytes(self.tpa))
+        self.source_proto = socket.inet_ntop(socket.AF_INET, bytes(self.spa))
+        self.target_proto = socket.inet_ntop(socket.AF_INET, bytes(self.tpa))
     
     def fill_details(self, details):
         details[utils.ETH_PROTO] = "ARP"
@@ -145,18 +132,18 @@ class ARP(Protocol):           # IETF RFC 826
         return details
 
 
-class TCP(Protocol):                # IETF RFC 793
+class TCP(BaseProtocol):                
     _fields_ = [
-        ("sport", c_uint16),        # Source port
-        ("dport", c_uint16),        # Destination port
-        ("seq", c_uint32),          # Sequence number
-        ("ack", c_uint32),          # Acknowledgement number
-        ("offset", c_uint16, 4),    # Data offset
-        ("reserved", c_uint16, 3),  # Reserved field
-        ("flags", c_uint16, 9),     # TCP flag codes
-        ("window", c_uint16),       # Size of the receive window
-        ("chksum", c_uint16),       # TCP header checksum
-        ("urg", c_uint16),          # Urgent pointer
+        ("sport", c_uint16),       
+        ("dport", c_uint16),       
+        ("seq", c_uint32),         
+        ("ack", c_uint32),          
+        ("offset", c_uint16, 4),    
+        ("reserved", c_uint16, 3), 
+        ("flags", c_uint16, 9),    
+        ("window", c_uint16),       
+        ("chksum", c_uint16),      
+        ("urg", c_uint16),        
     ]
     header_len = 32
 
@@ -178,12 +165,12 @@ class TCP(Protocol):                # IETF RFC 793
         return details
 
 
-class UDP(Protocol):          # IETF RFC 768
+class UDP(BaseProtocol):         
     _fields_ = [
-        ("sport", c_uint16),  # Source port
-        ("dport", c_uint16),  # Destination port
-        ("len", c_uint16),    # Header length
-        ("chksum", c_uint16)  # Header checksum
+        ("sport", c_uint16),  
+        ("dport", c_uint16),  
+        ("len", c_uint16),   
+        ("chksum", c_uint16)  
     ]
     header_len = 8
 
@@ -197,19 +184,18 @@ class UDP(Protocol):          # IETF RFC 768
         return details
 
 
-class ICMP(Protocol):           # IETF RFC 792
+class ICMP(BaseProtocol):          
     _fields_ = [
-        ("type", c_uint8),      # Control message type
-        ("code", c_uint8),      # Control message subtype
-        ("chksum", c_uint16),   # Header checksum
-        ("rest", c_ubyte * 4)   # Rest of header (contents vary)
+        ("type", c_uint8),     
+        ("code", c_uint8),    
+        ("chksum", c_uint16),   
+        ("rest", c_ubyte * 4)   
     ]
     header_len = 8
     icmp_types = {0: 'REPLY', 8: 'REQUEST'}
 
     def __init__(self, packet: bytes):
         super().__init__(packet)
-        # Limit implementation to ICMP ECHO
         self.type_txt = self.icmp_types.get(self.type, 'OTHER')
 
     def fill_details(self, details):

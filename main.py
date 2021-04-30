@@ -91,9 +91,9 @@ usage:  run -i [internal network interface] -e [external network interface] -f [
 
         rules -f [path to rules] -apply
 
-        rules -f [path to rules] -show <optional [-i/e] -r [rule_index]>
+        rules -f [path to rules] -show <optional [-i/e] [-r rule_index]>
 
-        rules -f [path to rules] -show_stats <optional [-i/e] -r [rule_index]>""")
+        rules -f [path to rules] -show_stats <optional [-i/e] [-r rule_index]>""")
     print("")
 
 def create_new(file_path):
