@@ -49,7 +49,7 @@ def get_rule_payload(cipher, packet):
     return cipher.decrypt(packet_data)
 
 def verify_packet(packet_details, rules):
-    for rule in rules:
+    for indx, rule in enumerate(rules):
         match_count = 0
         for key in rule:
             if rule[key] == "any":
@@ -65,8 +65,8 @@ def verify_packet(packet_details, rules):
                     if packet_details[key] != "none" and check_port(packet_details[key], rule[key]):
                         match_count += 1
         if match_count == 8:
-            return False
-    return True
+            return False, indx
+    return True, 0
 
 def check_port(port, port_range):
     if "-" in port_range:
@@ -109,3 +109,8 @@ def load_rules(path_to_file):
         rules_file.close()
         return rules_data['outgoing'], rules_data['incoming'], rules_data['outgoing_last_index'], rules_data['incoming_last_index']
         
+def load_logs(path_to_file):
+    with open(path_to_file, 'r', os.O_NONBLOCK) as log_file:
+        log_data = json.load(log_file)
+        log_file.close()
+        return log_data

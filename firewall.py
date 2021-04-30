@@ -18,6 +18,20 @@ class Firewall:
         self.icmp_tolerance = 100
         self.icmp_block = False
         self.icmp_block_start = 0
+        self.logs = {
+            "total_packets": 0,
+            "total_dropped": 0,
+            "internal":{
+                "total_packets": 0,
+                "total_dropped": 0
+            },
+            "external":{
+                "total_packets": 0,
+                "total_dropped": 0
+            },
+            "icmp_floods": 0,
+            "icmp_dropped": 0
+        }
         try:
             self.int_socket.setblocking(0)
             self.ext_socket.setblocking(0)
@@ -48,6 +62,7 @@ class Firewall:
                 for s in readable:
                     raw_packet = s.recv(2048)
                     recv_time = time.time()
+                    self.logs["total_packets"] += 1
                     if s is self.lp_socket:
                         if utils.is_admin_packet(raw_packet): 
                             rule_payload = utils.get_rule_payload(raw_packet)
@@ -55,17 +70,21 @@ class Firewall:
                                 self.rule_file = rule_payload[10:]
                                 self.load_rules(self.rule_file)
                     elif s is self.int_socket:
+                        self.logs["internal"]["total_packets"] += 1
                         packet_details = utils.get_packet_details(raw_packet)
-                        if utils.verify_packet(packet_details, self.int_rules):
+                        verification, indx = utils.verify_packet(packet_details, self.int_rules)
+                        if verification:
                             self.output_queues[self.ext_socket].put(raw_packet)
                             if self.ext_socket not in self.output_list:
                                 self.output_list.append(self.ext_socket)
                         else: 
-                            print("Packet dropped.")
-                            print(packet_details)
+                            print("Packet dropped")
+                            self.drop_packet(indx, "internal")
                     else:
+                        self.logs["external"]["total_packets"] += 1
                         packet_details = utils.get_packet_details(raw_packet)
-                        if utils.verify_packet(packet_details, self.ext_rules):
+                        verification, indx = utils.verify_packet(packet_details, self.ext_rules)
+                        if verification:
                             if packet_details[utils.NET_PROTO] == "ICMP":
                                 self.handle_ICMP(raw_packet, recv_time)
                             else:
@@ -73,8 +92,8 @@ class Firewall:
                                 if self.int_socket not in self.output_list:
                                     self.output_list.append(self.int_socket)
                         else: 
-                            print("Packet dropped.")
-                            print(packet_details)
+                            print("Packet dropped")
+                            self.drop_packet(indx, "external")
                 for s in writable:
                     try:
                         next_msg = self.output_queues[s].get_nowait()
@@ -118,13 +137,30 @@ class Firewall:
             else:
                 self.icmp_block = True
                 self.icmp_block_start = time.time()
-                # dropped icmp 
+                self.logs["icmp_floods"] += 1
+                self.logs["icmp_dropped"] += 1
+                self.logs["icmp_dropped"] += 1 
         else:
             if time_stamp - self.icmp_block_start < 3600:
-                # dropped icmp
+                self.logs["icmp_dropped"] += 1
             else:
                 self.icmp_block = False
                 self.icmp_block_start = 0
+                self.output_queues[self.int_socket].put(packet)
+                if self.int_socket not in self.output_list:
+                    self.output_list.append(self.int_socket)
+
+    def drop_packet(rule_index, interface):
+        self.logs["total_dropped"] += 1
+        self.logs[interface]["total_dropped"] += 1
+        if rule_index in self.logs[interface]:
+            self.logs[interface][rule_index] += 1
+        else:
+            self.logs[interface][rule_index] = 1  
+        with open('logs.json', 'w', os.O_NONBLOCK) as log_file:
+            json.dump(self.logs, log_file)
+            log_file.close()
+
 
 
 

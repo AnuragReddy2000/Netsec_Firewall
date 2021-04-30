@@ -110,7 +110,6 @@ class Rules:
                 print("Updation cancelled!")
 
     def check_mac(self, mac):
-
         regex = ("^([0-9A-Fa-f]{2}[:-])" + "{5}([0-9A-Fa-f]{2})|" +
                 "([0-9a-fA-F]{4}\\." + "[0-9a-fA-F]{4}\\." +
                 "[0-9a-fA-F]{4})$")  
@@ -120,21 +119,7 @@ class Rules:
         else:
             return False
 
-
     def check_ip(self, ip):
-        '''
-        if "/" in ip:
-            [ip, mask] = ip.split("/")
-            if not mask.isnumeric() or int(mask) > 32:
-                return False
-        if ip.count(".") != 3:
-            return False
-        ip_components = ip.split(".")
-        for component in ip_components:
-            if not component.isnumeric() or int(component) > 255:
-                return False 
-        return True
-        '''
         try:
             ipaddress.ip_network(ip)
             return True
