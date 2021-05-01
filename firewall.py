@@ -1,10 +1,10 @@
-import socket, select, json, time, os, random, bisect, queue as Queue
+import socket, select, json, time, os, random, bisect, math, queue as Queue
 import firewall_utils as utils
 from cipher import Cipher
 from getpass import getpass
 
 class Firewall:
-    def __init__(self, int_interface, ext_interface, rule_file, password):
+    def __init__(self, int_interface, ext_interface, rule_file, password, tolerence=200):
         self.password = password
         self.rule_file = rule_file
         self.cipher = Cipher(password)
@@ -14,13 +14,15 @@ class Firewall:
         self.ext_socket = socket.socket(socket.PF_PACKET, socket.SOCK_RAW, socket.ntohs(0x0003))
         self.lp_socket = socket.socket(socket.PF_PACKET, socket.SOCK_RAW, socket.ntohs(0x0003))
         self.icmp_list = []
-        self.icmp_tolerance = 100
+        self.icmp_tolerance = tolerence
         self.icmp_block = False
         self.icmp_block_start = 0
+        self.start_time = math.floor(time.time())
         self.logs = {
             "total_packets": 0,
             "total_dropped": 0,
             "max_pps": 0,
+            "traffic":{},
             rule_file : {
                 "internal":{
                     "total_packets": 0,
@@ -64,6 +66,11 @@ class Firewall:
                 for s in readable:
                     raw_packet = s.recv(2048)
                     recv_time = time.time()
+                    recv_sec = math.floor(recv_time)-self.start_time
+                    if recv_sec in self.logs["traffic"]:
+                        self.logs["traffic"][recv_sec] += 1
+                    else:
+                        self.logs["traffic"][recv_sec] = 1
                     self.logs["total_packets"] += 1
                     if s is self.lp_socket:
                         if utils.is_admin_packet(raw_packet): 

@@ -5,6 +5,7 @@ from firewall import Firewall
 from getpass import getpass
 from cipher import Cipher
 import socket, os, sys, json, firewall_utils as utils
+import matplotlib.pyplot as plt, numpy as np
 
 def main():
     arg_len = len(sys.argv)
@@ -12,9 +13,12 @@ def main():
         print_usage()
     else:
         if sys.argv[1] == "run":
-            if arg_len != 8:
+            if arg_len != 8 and arg_len!= 10:
                 print_usage()
             else:
+                icmp_tol = 200
+                if arg_len == 10:
+                    icmp_tol = int(sys.argv[9])
                 int_inf = sys.argv[3]
                 ext_inf = sys.argv[5]
                 file_path = sys.argv[7]
@@ -24,7 +28,7 @@ def main():
                 while password != pswd_conf:
                     pswd_conf = getpass(prompt="Passwords not matching! Re-enter the password for confirmation: ")
                 print("")
-                Firewall(int_inf, ext_inf, file_path, password)
+                Firewall(int_inf, ext_inf, file_path, password, tolerence=icmp_tol)
         elif sys.argv[1] == "rules":
             if arg_len < 5 or sys.argv[2] != "-f":
                 print_usage()
@@ -91,7 +95,8 @@ def main():
 
 def print_usage():
     print("""
-usage:  run -i [internal network interface] -e [external network interface] -f [path to rules]
+usage:  run -i [internal network interface] -e [external network interface] 
+                    -f [path to rules] <optional -t [icmp_tolerance]>
 
         rules -f [path to rules] -create
 
@@ -105,7 +110,7 @@ usage:  run -i [internal network interface] -e [external network interface] -f [
 
         rules -f [path to rules] -show <optional [-i/e] [-r rule_index]>
 
-        rules -f [path to rules] -show_stats <optional [-i/e] [-r rule_index]>""")
+        logs -show_stats <optional -f [path to rules] [-i/e] [-r rule_index]>""")
     print("")
 
 def create_new(file_path):
@@ -170,6 +175,18 @@ def show_statistics(rule_file=None, rule_set=None, indx=None):
         print("")
         print("-"*22,"PPS INFO","-"*22)
         print("MAXIMUM PPS SO FAR: ",logs["max_pps"])
-
+        print("")
+        print("-"*18,"NETWORK TRAFFIC","-"*18)
+        net_traffic = logs["traffic"]
+        max_sec = int(max(net_traffic.keys()))
+        packets_num = np.zeros(max_sec+1)
+        for i in net_traffic:
+            packets_num[int(i)] = net_traffic[i]
+        #fig = plt.figure()
+        plt.plot(range(max_sec+1), packets_num)
+        #fig.suptitle('Network Traffic')
+        plt.xlabel('Time in seconds')
+        plt.ylabel('Number of Packets')
+        plt.show()
  
 main()
