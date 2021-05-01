@@ -1,4 +1,4 @@
-import firewall_utils as utils, json, os, re
+import firewall_utils as utils, json, os, ipaddress, re
 
 class Rules:
     def __init__(self, file_path):
@@ -64,11 +64,11 @@ class Rules:
         while rule_set != "i" and rule_set != "e":
             rule_set = input("Invalid response! Please try again: ")
         if rule_set == "e":
-            new_rule["index"]: self.ext_last_index + 1
+            new_rule["index"] = self.ext_last_index + 1
             self.ext_last_index += 1
             self.ext_rules.append(new_rule)
         else:
-            new_rule["index"]: self.int_last_index + 1
+            new_rule["index"] = self.int_last_index + 1
             self.int_last_index += 1
             self.int_rules.append(new_rule)
         self.commit_changes()
@@ -81,7 +81,7 @@ class Rules:
 
     def edit_rule(self, rule_set, index):
         print("")
-        if rule_set == "e":
+        if rule_set == "-e":
             rules = self.ext_rules
         else:
             rules = self.int_rules
@@ -101,7 +101,7 @@ class Rules:
             if confirmation == "Y":
                 new_rule["index"] = index
                 rules[rule_num] = new_rule
-                if rule_set == "e":
+                if rule_set == "-e":
                     self.ext_rules = rules
                 else:
                     self.int_rules = rules
@@ -145,30 +145,41 @@ class Rules:
         if rule_set == None:
             print("-"*20,"RULES FOR PACKETS COMING FROM EXTERNAL NETWORK","-"*20)
             print("="*88)
-            for idx, rule in enumerate(self.ext_rules):
-                self.print_rule(rule)
-                print("-"*88)
+            if len(self.ext_rules) > 0:
+                for idx, rule in enumerate(self.ext_rules):
+                    self.print_rule(rule)
+                    print("-"*88)
+            else:
+                print(" "*28,"No rules written here yet!")
+            print("="*88)
             print("")
             print("-"*20,"RULES FOR PACKETS GOING FROM INTERNAL NETWORK","-"*20)
             print("="*88)
-            for idx, rule in enumerate(self.int_rules):
-                self.print_rule(rule)
-                print("-"*88)
+            if len(self.int_rules) > 0:
+                for idx, rule in enumerate(self.int_rules):
+                    self.print_rule(rule)
+                    print("-"*88)
+            else:
+                print(" "*28,"No rules written here yet!")
             print("="*88)
         else:
-            if rule_set == 'e':
+            if rule_set == '-e':
                 if index == None:
                     print("-"*20,"RULES FOR PACKETS COMING FROM EXTERNAL NETWORK","-"*20)
                     print("="*88)
-                    for idx, rule in enumerate(self.ext_rules):
-                        self.print_rule(rule)
-                        print("-"*88)
+                    if len(self.ext_rules) > 0:
+                        for idx, rule in enumerate(self.ext_rules):
+                            self.print_rule(rule)
+                            print("-"*88)
+                    else:
+                        print(" "*28,"No rules written here yet!")
+                    print("="*88)
                 else:
                     rule_num = self.get_rule_from_index(self.ext_rules, index)
                     if rule_num == None:
-                        print("Invalid index! Please Try again!")
+                        print("Invalid rule index for this set of rules! Please Try again!")
                     else:
-                        print("-"*20,"RULE NUMBER: ",index," IN EXTERNAL NETWORK RULES","-"*20)
+                        print("-"*20,"RULE INDEX: ",index,", IN EXTERNAL NETWORK RULES","-"*20)
                         print("="*88)
                         self.print_rule(self.ext_rules[rule_num])
                         print("="*88)
@@ -176,22 +187,26 @@ class Rules:
                 if index == None:
                     print("-"*20,"RULES FOR PACKETS GOING FROM INTERNAL NETWORK","-"*20)
                     print("="*88)
-                    for idx, rule in enumerate(self.int_rules):
-                        self.print_rule(rule)
-                        print("-"*88)
+                    if len(self.int_rules) > 0:
+                        for idx, rule in enumerate(self.int_rules):
+                            self.print_rule(rule)
+                            print("-"*88)
+                    else:
+                        print(" "*28,"No rules written here yet!")
+                    print("="*88)
                 else:
                     rule_num = self.get_rule_from_index(self.int_rules, index)
                     if rule_num == None:
-                        print("Invalid index! Please Try again!")
+                        print("Invalid rule index for this set of rules! Please Try again!")
                     else:
-                        print("-"*20,"RULE NUMBER: ",index,"IN INTERNAL NETWORK RULES","-"*20)
+                        print("-"*20,"RULE INDEX: ",index,", IN INTERNAL NETWORK RULES","-"*20)
                         print("="*88)
                         self.print_rule(self.int_rules[rule_num])
                         print("="*88)
 
     def delete_rule(self, rule_set, index):
         print("")
-        if rule_set == "e":
+        if rule_set == "-e":
             rules = self.ext_rules
         else:
             rules = self.int_rules

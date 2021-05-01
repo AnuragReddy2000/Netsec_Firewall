@@ -4,7 +4,7 @@ from rules_io import Rules
 from firewall import Firewall
 from getpass import getpass
 from cipher import Cipher
-import socket, os, sys, json
+import socket, os, sys, json, firewall_utils as utils
 
 def main():
     arg_len = len(sys.argv)
@@ -60,7 +60,7 @@ def main():
                             rule_set = sys.argv[5]
                         if arg_len == 8:
                             rule_set = sys.argv[5]
-                            rule_index = sys.argv[7]
+                            rule_index = int(sys.argv[7])
                         io.show_rules(rule_set, rule_index)
                     elif sys.argv[4] == "-show_stats":
                         rule_set = None
@@ -70,6 +70,7 @@ def main():
                         if arg_len == 8:
                             rule_set = sys.argv[5]
                             rule_index = sys.argv[7]
+                        show_statistics(rule_set,rule_index)
                        
         else:
             print_usage()
@@ -77,7 +78,6 @@ def main():
 
 
 def print_usage():
-    print("")
     print("""
 usage:  run -i [internal network interface] -e [external network interface] -f [path to rules]
 
@@ -119,7 +119,37 @@ def apply_rules(file_path, password):
     except:
         lp_socket.close()
 
-def show_statistics(file_path):
-    pass
+def show_statistics(rule_set=None, indx=None):
+    interface = None
+    if rule_set == "-e":
+        interface = "external"
+    elif rule_set == "-i":
+        interface = "internal"
+    logs = utils.load_logs('logs.json')
+    print("\n")
+    print("-"*13,"OVERALL FIREWALL STATISTICS","-"*13)
+    print("TOTAL PACkETS RECEIVED BY THE FIREWALL: ", logs["total_packets"])
+    print("TOTAL PACkETS DROPPED BY THE FIREWALL: ", logs["total_dropped"])
+    if interface != None:
+        print("\n")
+        print("-"*12,interface.upper(),"INTERFACE STATISTICS","-"*12)
+        print("TOTAL PACKETS RECEIVED ON",interface.upper(),"INTERFACE: ", logs[interface]["total_packets"])
+        print("TOTAL PACKETS DROPPED ON",interface.upper(),"INTERFACE: ", logs[interface]["total_dropped"])
+        if indx != None:
+            if indx in logs[interface]:
+                print("\nTOTAL PACKETS DROPPED DUE TO RULE",indx,"ON",interface.upper(),"INTERFACE :",logs[interface][indx])
+            else:
+                print("Invalid rule index!")
+    else:
+        print("\n")
+        print("-"*12,"EXTERNAL INTERFACE STATISTICS","-"*12)
+        print("TOTAL PACKETS RECEIVED ON EXTERNAL INTERFACE: ", logs["external"]["total_packets"])
+        print("TOTAL PACKETS DROPPED ON EXTERNAL INTERFACE: ", logs["external"]["total_dropped"])
+        print("\n")
+        print("-"*12,"INTERNAL INTERFACE STATISTICS","-"*12)
+        print("TOTAL PACKETS RECEIVED ON INTERNAL INTERFACE: ", logs["internal"]["total_packets"])
+        print("TOTAL PACKETS DROPPED ON INTERNAL INTERFACE: ", logs["internal"]["total_dropped"])
+
+
  
 main()

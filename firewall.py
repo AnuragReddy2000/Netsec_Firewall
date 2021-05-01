@@ -33,12 +33,12 @@ class Firewall:
             "icmp_dropped": 0
         }
         try:
-            self.int_socket.setblocking(0)
-            self.ext_socket.setblocking(0)
-            self.lp_socket.setblocking(0)
             self.int_socket.bind((self.int_interface, 0))
             self.ext_socket.bind((self.ext_interface, 0))
             self.lp_socket.bind(('lo',5430))
+            self.int_socket.setblocking(0)
+            self.ext_socket.setblocking(0)
+            self.lp_socket.setblocking(0)
             self.sockets = [self.int_socket, self.ext_socket, self.lp_socket]
             self.output_queues = {
                 self.int_socket : Queue.Queue(),
