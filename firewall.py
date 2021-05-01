@@ -1,7 +1,6 @@
 import socket, select, json, time, os, random, bisect, queue as Queue
 import firewall_utils as utils
 from cipher import Cipher
-#from colorama import Fore, Style
 from getpass import getpass
 
 class Firewall:
@@ -21,13 +20,16 @@ class Firewall:
         self.logs = {
             "total_packets": 0,
             "total_dropped": 0,
-            "internal":{
-                "total_packets": 0,
-                "total_dropped": 0
-            },
-            "external":{
-                "total_packets": 0,
-                "total_dropped": 0
+            "max_pps": 0,
+            rule_file : {
+                "internal":{
+                    "total_packets": 0,
+                    "total_dropped": 0
+                },
+                "external":{
+                    "total_packets": 0,
+                    "total_dropped": 0
+                }
             },
             "icmp_floods": 0,
             "icmp_dropped": 0
@@ -68,9 +70,19 @@ class Firewall:
                             rule_payload = utils.get_rule_payload(raw_packet)
                             if rule_payload != "" and ("RULE_FILE:" in rule_payload):
                                 self.rule_file = rule_payload[10:]
+                                self.logs[self.rule_file] = {
+                                    "internal":{
+                                        "total_packets": 0,
+                                        "total_dropped": 0
+                                    },
+                                    "external":{
+                                        "total_packets": 0,
+                                        "total_dropped": 0
+                                    }
+                                }
                                 self.load_rules(self.rule_file)
                     elif s is self.int_socket:
-                        self.logs["internal"]["total_packets"] += 1
+                        self.logs[self.rule_file]["internal"]["total_packets"] += 1
                         packet_details = utils.get_packet_details(raw_packet)
                         verification, indx = utils.verify_packet(packet_details, self.int_rules)
                         if verification:
@@ -81,7 +93,7 @@ class Firewall:
                             print("Packet dropped")
                             self.drop_packet(indx, "internal")
                     else:
-                        self.logs["external"]["total_packets"] += 1
+                        self.logs[self.rule_file]["external"]["total_packets"] += 1
                         packet_details = utils.get_packet_details(raw_packet)
                         verification, indx = utils.verify_packet(packet_details, self.ext_rules)
                         if verification:
@@ -94,6 +106,11 @@ class Firewall:
                         else: 
                             print("Packet dropped")
                             self.drop_packet(indx, "external")
+                    done_time = time.time()
+                    pps = 1/(done_time-recv_time)
+                    if pps>self.logs["max_pps"]:
+                        self.logs["max_pps"] = pps
+                        self.dump_logs()
                 for s in writable:
                     try:
                         next_msg = self.output_queues[s].get_nowait()
@@ -116,6 +133,7 @@ class Firewall:
                         self.int_socket.close()
                         self.ext_socket.close()
                         self.lp_socket.close()
+                        self.dump_logs()
                         print("Password match! Aborting!")
                         break
                     else:
@@ -139,10 +157,11 @@ class Firewall:
                 self.icmp_block_start = time.time()
                 self.logs["icmp_floods"] += 1
                 self.logs["icmp_dropped"] += 1
-                self.logs["icmp_dropped"] += 1 
+                self.dump_logs()
         else:
             if time_stamp - self.icmp_block_start < 3600:
                 self.logs["icmp_dropped"] += 1
+                self.dump_logs()
             else:
                 self.icmp_block = False
                 self.icmp_block_start = 0
@@ -150,13 +169,16 @@ class Firewall:
                 if self.int_socket not in self.output_list:
                     self.output_list.append(self.int_socket)
 
-    def drop_packet(rule_index, interface):
+    def drop_packet(self,rule_index, interface):
         self.logs["total_dropped"] += 1
-        self.logs[interface]["total_dropped"] += 1
+        self.logs[self.rule_file][interface]["total_dropped"] += 1
         if rule_index in self.logs[interface]:
-            self.logs[interface][rule_index] += 1
+            self.logs[self.rule_file][interface][rule_index] += 1
         else:
-            self.logs[interface][rule_index] = 1  
+            self.logs[self.rule_file][interface][rule_index] = 1  
+        self.dump_logs()
+
+    def dump_logs(self):
         with open('logs.json', 'w', os.O_NONBLOCK) as log_file:
             json.dump(self.logs, log_file)
             log_file.close()

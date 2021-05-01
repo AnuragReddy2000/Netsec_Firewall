@@ -62,16 +62,28 @@ def main():
                             rule_set = sys.argv[5]
                             rule_index = int(sys.argv[7])
                         io.show_rules(rule_set, rule_index)
-                    elif sys.argv[4] == "-show_stats":
-                        rule_set = None
-                        rule_index = None
-                        if arg_len == 6:
-                            rule_set = sys.argv[5]
-                        if arg_len == 8:
-                            rule_set = sys.argv[5]
-                            rule_index = sys.argv[7]
-                        show_statistics(rule_set,rule_index)
-                       
+        elif sys.argv[1] == "logs":
+            if arg_len < 3:
+                print_usage()
+            else:
+                if arg_len == 3:
+                    show_statistics()
+                elif arg_len == 5:
+                    file_path = sys.argv[4]
+                    show_statistics(rule_file=file_path)
+                elif arg_len == 6:
+                    file_path = sys.argv[4]
+                    rule_set = sys.argv[5]
+                    show_statistics(rule_file=file_path, rule_set=rule_set)
+                elif arg_len == 8:
+                    file_path = sys.argv[4]
+                    rule_set = sys.argv[5]
+                    rule_indx = sys.argv[7]
+                    show_statistics(rule_file=file_path, rule_set=rule_set, indx=rule_indx)
+                else:
+                    print_usage()
+
+
         else:
             print_usage()
 
@@ -119,37 +131,45 @@ def apply_rules(file_path, password):
     except:
         lp_socket.close()
 
-def show_statistics(rule_set=None, indx=None):
+def show_statistics(rule_file=None, rule_set=None, indx=None):
     interface = None
     if rule_set == "-e":
         interface = "external"
     elif rule_set == "-i":
         interface = "internal"
     logs = utils.load_logs('logs.json')
-    print("\n")
+    print("")
     print("-"*13,"OVERALL FIREWALL STATISTICS","-"*13)
     print("TOTAL PACkETS RECEIVED BY THE FIREWALL: ", logs["total_packets"])
     print("TOTAL PACkETS DROPPED BY THE FIREWALL: ", logs["total_dropped"])
-    if interface != None:
-        print("\n")
-        print("-"*12,interface.upper(),"INTERFACE STATISTICS","-"*12)
-        print("TOTAL PACKETS RECEIVED ON",interface.upper(),"INTERFACE: ", logs[interface]["total_packets"])
-        print("TOTAL PACKETS DROPPED ON",interface.upper(),"INTERFACE: ", logs[interface]["total_dropped"])
-        if indx != None:
-            if indx in logs[interface]:
-                print("\nTOTAL PACKETS DROPPED DUE TO RULE",indx,"ON",interface.upper(),"INTERFACE :",logs[interface][indx])
-            else:
-                print("Invalid rule index!")
+    if rule_file != None:
+        if interface != None:
+            print("")
+            print("-"*12,interface.upper(),"INTERFACE STATISTICS","-"*12)
+            print("TOTAL PACKETS RECEIVED ON",interface.upper(),"INTERFACE: ", logs[rule_file][interface]["total_packets"])
+            print("TOTAL PACKETS DROPPED ON",interface.upper(),"INTERFACE: ", logs[rule_file][interface]["total_dropped"])
+            if indx != None:
+                if indx in logs[rule_file][interface]:
+                    print("\nTOTAL PACKETS DROPPED DUE TO RULE",indx,"ON",interface.upper(),"INTERFACE :",logs[rule_file][interface][indx])
+                else:
+                    print("Invalid rule index!")
+        else:
+            print("")
+            print("-"*12,"EXTERNAL INTERFACE STATISTICS","-"*12)
+            print("TOTAL PACKETS RECEIVED ON EXTERNAL INTERFACE: ", logs[rule_file]["external"]["total_packets"])
+            print("TOTAL PACKETS DROPPED ON EXTERNAL INTERFACE: ", logs[rule_file]["external"]["total_dropped"])
+            print("")
+            print("-"*12,"INTERNAL INTERFACE STATISTICS","-"*12)
+            print("TOTAL PACKETS RECEIVED ON INTERNAL INTERFACE: ", logs[rule_file]["internal"]["total_packets"])
+            print("TOTAL PACKETS DROPPED ON INTERNAL INTERFACE: ", logs[rule_file]["internal"]["total_dropped"])
     else:
-        print("\n")
-        print("-"*12,"EXTERNAL INTERFACE STATISTICS","-"*12)
-        print("TOTAL PACKETS RECEIVED ON EXTERNAL INTERFACE: ", logs["external"]["total_packets"])
-        print("TOTAL PACKETS DROPPED ON EXTERNAL INTERFACE: ", logs["external"]["total_dropped"])
-        print("\n")
-        print("-"*12,"INTERNAL INTERFACE STATISTICS","-"*12)
-        print("TOTAL PACKETS RECEIVED ON INTERNAL INTERFACE: ", logs["internal"]["total_packets"])
-        print("TOTAL PACKETS DROPPED ON INTERNAL INTERFACE: ", logs["internal"]["total_dropped"])
-
+        print("")
+        print("-"*16, "ICMP FLOOD STATISTICS", "-"*16)
+        print("FLOODS ENCOUNTERED SO FAR: ", logs["icmp_floods"])
+        print("PACKETS DROPPED DURING ICMP BLOCK:", logs["icmp_dropped"])
+        print("")
+        print("-"*22,"PPS INFO","-"*22)
+        print("MAXIMUM PPS SO FAR: ",logs["max_pps"])
 
  
 main()

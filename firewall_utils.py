@@ -49,7 +49,7 @@ def get_rule_payload(cipher, packet):
     return cipher.decrypt(packet_data)
 
 def verify_packet(packet_details, rules):
-    for indx, rule in enumerate(rules):
+    for rule in rules:
         match_count = 0
         for key in rule:
             if rule[key] == "any":
@@ -65,7 +65,7 @@ def verify_packet(packet_details, rules):
                     if packet_details[key] != "none" and check_port(packet_details[key], rule[key]):
                         match_count += 1
         if match_count == 8:
-            return False, indx
+            return False, rule["index"]
     return True, 0
 
 def check_port(port, port_range):
