@@ -1,4 +1,4 @@
-import socket, select, json, time, os, random, bisect, math, queue as Queue
+import socket, select, json, time, os, bisect, math, queue as Queue
 import firewall_utils as utils
 from cipher import Cipher
 from getpass import getpass
