@@ -5,7 +5,8 @@ from firewall import Firewall
 from getpass import getpass
 from cipher import Cipher
 import socket, os, sys, json, firewall_utils as utils
-import matplotlib.pyplot as plt, numpy as np
+from matplotlib import pyplot as plt
+import numpy as np
 
 def main():
     arg_len = len(sys.argv)
@@ -126,15 +127,16 @@ def create_new(file_path):
     print("Sucessfully created an empty rule file")
 
 def apply_rules(file_path, password):
-    try:
+#    try:
         lp_socket = socket.socket(socket.PF_PACKET, socket.SOCK_RAW, socket.ntohs(0x0003))
-        lp_socket.connect(("127.0.0.1",5430))
+        lp_socket.bind(('lo',5431))
         encrypted_msg = Cipher(password).encrypt("RULE_FILE:"+file_path)
-        final_msg = "UPDATE_RULES"+encrypted_msg
-        lp_socket.sendall(final_msg.encode('UTf-8'))
+        final_msg = "UPDATE_RULES"+str(encrypted_msg)
+        lp_socket.send(final_msg.encode('UTF-8'))
         lp_socket.close()
-    except:
-        lp_socket.close()
+  #  except Exception as e:
+   #     print(e)
+       # lp_socket.close()
 
 def show_statistics(rule_file=None, rule_set=None, indx=None):
     interface = None
@@ -176,17 +178,6 @@ def show_statistics(rule_file=None, rule_set=None, indx=None):
         print("-"*22,"PPS INFO","-"*22)
         print("MAXIMUM PPS SO FAR: ",logs["max_pps"])
         print("")
-        print("-"*18,"NETWORK TRAFFIC","-"*18)
-        net_traffic = logs["traffic"]
-        max_sec = int(max(net_traffic.keys()))
-        packets_num = np.zeros(max_sec+1)
-        for i in net_traffic:
-            packets_num[int(i)] = net_traffic[i]
-        #fig = plt.figure()
-        plt.plot(range(max_sec+1), packets_num)
-        #fig.suptitle('Network Traffic')
-        plt.xlabel('Time in seconds')
-        plt.ylabel('Number of Packets')
-        plt.show()
- 
+       # print("-"*18,"NETWORK TRAFFIC","-"*18)
+     
 main()

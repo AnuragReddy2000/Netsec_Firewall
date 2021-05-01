@@ -73,9 +73,11 @@ class Firewall:
                         self.logs["traffic"][recv_sec] = 1
                     self.logs["total_packets"] += 1
                     if s is self.lp_socket:
+                        print("received admin pack")
                         if utils.is_admin_packet(raw_packet): 
                             rule_payload = utils.get_rule_payload(raw_packet)
                             if rule_payload != "" and ("RULE_FILE:" in rule_payload):
+                                print("RULES UPDATE RECEIVED\n")
                                 self.rule_file = rule_payload[10:]
                                 self.logs[self.rule_file] = {
                                     "internal":{
@@ -97,7 +99,8 @@ class Firewall:
                             if self.ext_socket not in self.output_list:
                                 self.output_list.append(self.ext_socket)
                         else: 
-                            print("Packet dropped")
+                            print("Packet dropped on internal interface, ",self.int_interface,'\n')
+                            print(packet_details,'\n')
                             self.drop_packet(indx, "internal")
                     else:
                         self.logs[self.rule_file]["external"]["total_packets"] += 1
@@ -111,7 +114,8 @@ class Firewall:
                                 if self.int_socket not in self.output_list:
                                     self.output_list.append(self.int_socket)
                         else: 
-                            print("Packet dropped")
+                            print("Packet dropped on external interface ",self.ext_interface,'\n')
+                            print(packet_details, '\n')
                             self.drop_packet(indx, "external")
                     done_time = time.time()
                     pps = 1/(done_time-recv_time)
@@ -160,6 +164,7 @@ class Firewall:
                 if self.int_socket not in self.output_list:
                     self.output_list.append(self.int_socket)
             else:
+                print('\n',"-"*10, "ICMP FLOOD DETECTED", "-"*10,'\n')
                 self.icmp_block = True
                 self.icmp_block_start = time.time()
                 self.logs["icmp_floods"] += 1
@@ -179,7 +184,7 @@ class Firewall:
     def drop_packet(self,rule_index, interface):
         self.logs["total_dropped"] += 1
         self.logs[self.rule_file][interface]["total_dropped"] += 1
-        if rule_index in self.logs[interface]:
+        if rule_index in self.logs[self.rule_file][interface]:
             self.logs[self.rule_file][interface][rule_index] += 1
         else:
             self.logs[self.rule_file][interface][rule_index] = 1  
