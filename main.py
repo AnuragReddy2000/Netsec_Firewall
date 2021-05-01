@@ -179,13 +179,12 @@ def show_statistics(rule_file=None, rule_set=None, indx=None):
         print("")
         title = "-"*18+"NETWORK TRAFFIC"+"-"*18
         net_traffic = logs["traffic"]
-        max_sec = int(max(net_traffic.keys()))
+        max_sec = max(np.array(list(net_traffic.keys())).astype(int))
         packets_num = np.zeros(max_sec+1)
         for i in net_traffic:
             packets_num[int(i)] = net_traffic[i]
         packets_num = packets_num.astype(int)
-        xs = np.arange(max_sec+1)
-        plt.plot(xs,packets_num)
+        plt.scatter(np.arange(max_sec+1),packets_num, fillx=True)
         plt.figsize(80, 20)
         plt.title(title)
         plt.xlabel("Time")
