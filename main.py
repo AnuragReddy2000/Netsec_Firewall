@@ -126,15 +126,16 @@ def create_new(file_path):
     print("Sucessfully created an empty rule file")
 
 def apply_rules(file_path, password):
-    try:
+#    try:
         lp_socket = socket.socket(socket.PF_PACKET, socket.SOCK_RAW, socket.ntohs(0x0003))
-        lp_socket.connect(("127.0.0.1",5430))
+        lp_socket.bind(('lo',5431))
         encrypted_msg = Cipher(password).encrypt("RULE_FILE:"+file_path)
-        final_msg = "UPDATE_RULES"+encrypted_msg
-        lp_socket.sendall(final_msg.encode('UTf-8'))
+        final_msg = "UPDATE_RULES"+str(encrypted_msg)
+        lp_socket.send(final_msg.encode('UTF-8'))
         lp_socket.close()
-    except:
-        lp_socket.close()
+  #  except Exception as e:
+   #     print(e)
+       # lp_socket.close()
 
 def show_statistics(rule_file=None, rule_set=None, indx=None):
     interface = None
