@@ -36,29 +36,29 @@ class Firewall:
             "icmp_floods": 0,
             "icmp_dropped": 0
         }
-        # try:
-        self.int_socket.bind((self.int_interface, 0))
-        self.ext_socket.bind((self.ext_interface, 0))
-        self.lp_socket.bind(('127.0.0.1',55430))
-        self.lp_socket.listen()
-        self.int_socket.setblocking(0)
-        self.ext_socket.setblocking(0)
-        self.lp_socket.setblocking(0)
-        self.sockets = [self.int_socket, self.ext_socket, self.lp_socket]
-        self.output_queues = {
-            self.int_socket : Queue.Queue(),
-            self.ext_socket : Queue.Queue()
-        }
-        self.output_list = []
-        self.int_rules, self.ext_rules, _, _ = utils.load_rules(self.rule_file)       
-        self.start_firewall()
-        # except Exception as e:
-        #     self.int_socket.close()
-        #     self.ext_socket.close()
-        #     self.lp_socket.close()
-        #     print("")
-        #     print("Exception occurred! ", e)
-        #     print("Aborting!")
+        try:
+            self.int_socket.bind((self.int_interface, 0))
+            self.ext_socket.bind((self.ext_interface, 0))
+            self.lp_socket.bind(('127.0.0.1',55430))
+            self.lp_socket.listen()
+            self.int_socket.setblocking(0)
+            self.ext_socket.setblocking(0)
+            self.lp_socket.setblocking(0)
+            self.sockets = [self.int_socket, self.ext_socket, self.lp_socket]
+            self.output_queues = {
+                self.int_socket : Queue.Queue(),
+                self.ext_socket : Queue.Queue()
+            }
+            self.output_list = []
+            self.int_rules, self.ext_rules, _, _ = utils.load_rules(self.rule_file)       
+            self.start_firewall()
+        except Exception as e:
+            self.int_socket.close()
+            self.ext_socket.close()
+            self.lp_socket.close()
+            print("")
+            print("Exception occurred! ", e)
+            print("Aborting!")
 
     def start_firewall(self):
         while True:
