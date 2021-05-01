@@ -4,8 +4,8 @@ from rules_io import Rules
 from firewall import Firewall
 from getpass import getpass
 from cipher import Cipher
-import socket, os, sys, json, firewall_utils as utils
-import matplotlib.pyplot as plt, numpy as np
+import socket, os, sys, json, firewall_utils as utils, numpy as np
+import plotext as plt
 
 def main():
     arg_len = len(sys.argv)
@@ -176,17 +176,19 @@ def show_statistics(rule_file=None, rule_set=None, indx=None):
         print("-"*22,"PPS INFO","-"*22)
         print("MAXIMUM PPS SO FAR: ",logs["max_pps"])
         print("")
-        print("-"*18,"NETWORK TRAFFIC","-"*18)
+        title = "-"*18+"NETWORK TRAFFIC"+"-"*18
         net_traffic = logs["traffic"]
         max_sec = int(max(net_traffic.keys()))
         packets_num = np.zeros(max_sec+1)
         for i in net_traffic:
             packets_num[int(i)] = net_traffic[i]
-        #fig = plt.figure()
-        plt.plot(range(max_sec+1), packets_num)
-        #fig.suptitle('Network Traffic')
-        plt.xlabel('Time in seconds')
-        plt.ylabel('Number of Packets')
+        packets_num = packets_num.astype(int)
+        xs = np.arange(max_sec+1)
+        plt.plot(xs,packets_num)
+        plt.figsize(80, 20)
+        plt.title(title)
+        plt.xlabel("Time")
+        plt.ylabel("Packets")
         plt.show()
  
 main()

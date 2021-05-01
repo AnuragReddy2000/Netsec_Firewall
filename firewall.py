@@ -179,7 +179,7 @@ class Firewall:
     def drop_packet(self,rule_index, interface):
         self.logs["total_dropped"] += 1
         self.logs[self.rule_file][interface]["total_dropped"] += 1
-        if rule_index in self.logs[interface]:
+        if rule_index in self.logs[self.rule_file][interface]:
             self.logs[self.rule_file][interface][rule_index] += 1
         else:
             self.logs[self.rule_file][interface][rule_index] = 1  
