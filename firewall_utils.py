@@ -45,7 +45,8 @@ def is_admin_packet(packet):
         return False
 
 def get_rule_payload(cipher, packet):
-    packet_data = packet.decode('UTF-8')[12:]
+    packet_data = (packet[12:]).decode('UTF-8')
+    packet_data = packet_data.strip("b").strip("'")
     return cipher.decrypt(packet_data)
 
 def verify_packet(packet_details, rules):
